@@ -1,0 +1,12 @@
+// Rule 1: RDP Brute Force Detection
+// Detects 5 or more failed logins (Event ID 4625) from the same IP
+// against the same account and computer.
+// MITRE ATT&CK: T1110 (Brute Force)
+Event
+| where EventID == 4625
+| extend Data = parse_xml(EventData)
+| extend IpAddress = tostring(Data.DataItem.EventData.Data[19]["#text"]),
+         Account = tostring(Data.DataItem.EventData.Data[5]["#text"])
+| summarize Attempts = count(), FirstAttempt = min(TimeGenerated),
+            LastAttempt = max(TimeGenerated) by IpAddress, Account, Computer
+| where Attempts >= 5

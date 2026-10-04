@@ -1,0 +1,166 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "Microsoft_Sentinel_incident": {
+                "type": "ApiConnectionWebhook",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                        }
+                    },
+                    "body": {
+                        "callback_url": "@listCallbackUrl()"
+                    },
+                    "path": "/incident-creation"
+                }
+            }
+        },
+        "actions": {
+            "Send_Email_(V3)": {
+                "runAfter": {
+                    "_Select_Hosts": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['smtp']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "From": "<YOUR_EMAIL>",
+                        "To": "<YOUR_EMAIL>",
+                        "Subject": "@triggerBody()?['object']?['properties']?['title']",
+                        "Body": "<html><body style='font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;'><table style='width:100%;max-width:600px;border-collapse:collapse;background:#fff;border:1px solid #ddd;'><tr><td colspan='2' style='background:#c0392b;color:#fff;padding:12px;font-size:18px;'>Security Incident: @{triggerBody()?['object']?['properties']?['title']}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;'><b>Severity</b></td><td style='padding:8px;border:1px solid #ddd;'>@{triggerBody()?['object']?['properties']?['severity']}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;'><b>Created</b></td><td style='padding:8px;border:1px solid #ddd;'>@{triggerBody()?['object']?['properties']?['createdTimeUtc']}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;'><b>Attacker IP(s)</b></td><td style='padding:8px;border:1px solid #ddd;'>@{join(body('_Select_IPs'), ', ')}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;'><b>Account(s)</b></td><td style='padding:8px;border:1px solid #ddd;'>@{join(body('Select_Accounts'), ', ')}</td></tr><tr><td style='padding:8px;border:1px solid #ddd;'><b>Host(s)</b></td><td style='padding:8px;border:1px solid #ddd;'>@{join(body('_Select_Hosts'), ', ')}</td></tr><tr><td colspan='2' style='padding:12px;text-align:center;'><a href='@{triggerBody()?['object']?['properties']?['incidentUrl']}' style='background:#2980b9;color:#fff;padding:10px 18px;text-decoration:none;'>Open in Sentinel</a></td></tr></table></body></html>",
+                        "IsHtml": true
+                    },
+                    "path": "/SendEmailV3"
+                }
+            },
+            "Entities_-_Get_IPs": {
+                "runAfter": {},
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuresentinel-1']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": "@triggerBody()?['object']?['properties']?['relatedEntities']",
+                    "path": "/entities/ip"
+                }
+            },
+            "Entities_-_Get_Accounts": {
+                "runAfter": {
+                    "_Select_IPs": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuresentinel-1']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": "@triggerBody()?['object']?['properties']?['relatedEntities']",
+                    "path": "/entities/account"
+                }
+            },
+            "Entities_-_Get_Hosts": {
+                "runAfter": {
+                    "Select_Accounts": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuresentinel-1']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "body": "@triggerBody()?['object']?['properties']?['relatedEntities']",
+                    "path": "/entities/host"
+                }
+            },
+            "_Select_IPs": {
+                "runAfter": {
+                    "Entities_-_Get_IPs": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Select",
+                "inputs": {
+                    "from": "@body('Entities_-_Get_IPs')?['IPs']",
+                    "select": "@item()?['Address']"
+                }
+            },
+            "Select_Accounts": {
+                "runAfter": {
+                    "Entities_-_Get_Accounts": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Select",
+                "inputs": {
+                    "from": "@body('Entities_-_Get_Accounts')?['Accounts']",
+                    "select": "@item()?['Name']"
+                }
+            },
+            "_Select_Hosts": {
+                "runAfter": {
+                    "Entities_-_Get_Hosts": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Select",
+                "inputs": {
+                    "from": "@body('Entities_-_Get_Hosts')?['Hosts']",
+                    "select": "@item()?['HostName']"
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "azuresentinel": {
+                    "id": "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Web/locations/centralindia/managedApis/azuresentinel",
+                    "connectionId": "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-sentinel-project/providers/Microsoft.Web/connections/azuresentinel",
+                    "connectionName": "azuresentinel",
+                    "connectionProperties": {}
+                },
+                "smtp": {
+                    "id": "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Web/locations/centralindia/managedApis/smtp",
+                    "connectionId": "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-sentinel-project/providers/Microsoft.Web/connections/smtp",
+                    "connectionName": "smtp",
+                    "connectionProperties": {}
+                },
+                "azuresentinel-1": {
+                    "id": "/subscriptions/<SUBSCRIPTION_ID>/providers/Microsoft.Web/locations/centralindia/managedApis/azuresentinel",
+                    "connectionId": "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/rg-sentinel-project/providers/Microsoft.Web/connections/azuresentinel",
+                    "connectionName": "azuresentinel",
+                    "connectionProperties": {}
+                }
+            }
+        }
+    }
+}

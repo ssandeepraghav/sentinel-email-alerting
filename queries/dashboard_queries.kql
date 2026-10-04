@@ -1,0 +1,29 @@
+// Workbook tile queries for "SIEM Email Alert Dashboard"
+// Tile 1: Incidents by severity | Tile 2: Incidents over time | Tile 3: Incidents by rule | Tile 4: Top attacker IPs
+
+// Incidents by severity
+SecurityIncident
+| summarize arg_max(TimeGenerated, *) by IncidentNumber
+| summarize Incidents = count() by Severity
+ 
+// Incidents over time
+SecurityIncident
+| summarize arg_max(TimeGenerated, *) by IncidentNumber
+| summarize Incidents = count() by bin(CreatedTime, 1h)
+| order by CreatedTime asc
+ 
+// Incidents by rule
+SecurityIncident
+| summarize arg_max(TimeGenerated, *) by IncidentNumber
+| summarize Incidents = count() by Title
+| order by Incidents desc
+ 
+// Top attacker IPs
+SecurityAlert
+| where AlertName has "RDP Brute Force"
+| extend Ent = parse_json(Entities)
+| mv-expand Ent
+| where tostring(Ent.Type) == "ip"
+| summarize Alerts = count() by IP = tostring(Ent.Address)
+| order by Alerts desc
+| take 10

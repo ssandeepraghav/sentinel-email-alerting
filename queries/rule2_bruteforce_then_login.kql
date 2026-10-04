@@ -1,0 +1,25 @@
+// Rule 2: Brute Force Followed by Successful Login
+// Detects failed logins (4625) followed by a successful login (4624)
+// from the same IP. This suggests the attacker guessed the password.
+// MITRE ATT&CK: T1110 (Brute Force), T1078 (Valid Accounts)
+
+let failed = Event
+| where EventID == 4625
+| extend Data = parse_xml(EventData)
+| extend IpAddress = tostring(Data.DataItem.EventData.Data[19]["#text"])
+| where isnotempty(IpAddress) and IpAddress != "-"
+| summarize Attempts = count(), LastAttempt = max(TimeGenerated) by IpAddress, Computer
+| where Attempts >= 5;
+let success = Event
+| where EventID == 4624
+| extend Data = parse_xml(EventData)
+| extend IpAddress = tostring(Data.DataItem.EventData.Data[18]["#text"]),
+         Account = tostring(Data.DataItem.EventData.Data[5]["#text"]),
+         LogonType = tostring(Data.DataItem.EventData.Data[8]["#text"])
+| where LogonType in ("10", "3")
+| project SuccessTime = TimeGenerated, IpAddress, Account, Computer;
+failed
+| join kind=inner success on IpAddress, Computer
+| where SuccessTime > LastAttempt
+| summarize SuccessTime = min(SuccessTime), Attempts = max(Attempts)
+            by IpAddress, Account, Computer

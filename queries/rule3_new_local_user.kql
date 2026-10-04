@@ -1,0 +1,8 @@
+ // Rule 3: New Local User Created (Event ID 4720)
+ // Detects creation of a new local account, a common persistence step.
+ // MITRE ATT&CK: T1136.001 (Create Account: Local Account)
+
+SecurityEvent
+| where EventID == 4720
+| project TimeGenerated, NewUser = TargetUserName,
+          CreatedBy = SubjectUserName, Computer
