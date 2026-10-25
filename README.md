@@ -105,7 +105,3 @@ The workbook gives an overview of the incidents.
 - Gmail SMTP with an app password is for a lab only; use a production mail service otherwise.
 - The automation rule emails every incident; production use should filter by severity.
 - Collection uses the "AllEvents" setting, which is heavy and should be reduced after testing.
-
-## Author
-
-Sandeep S Raghav, M.Tech (Cyber Security and Digital Forensics), VIT Bhopal University. Supervisor: Dr. Hariharasitaraman S.
