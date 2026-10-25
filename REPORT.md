@@ -1,8 +1,5 @@
 # Automated SIEM Security Email Alerting using Microsoft Sentinel: Project Report
 
-**M.Tech dissertation**, Computer Science and Engineering (Cyber Security and Digital Forensics), School of Computing Science Engineering and Artificial Intelligence, VIT Bhopal University, October 2026.
-**Author:** Sandeep S Raghav (25MCF10017) | **Supervisor:** Dr. Hariharasitaraman S, Associate Professor
-
 [Back to the project README](README.md)
 
 ## Contents
